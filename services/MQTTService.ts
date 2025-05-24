@@ -12,7 +12,7 @@ class MQTTService {
   };
 
   private brokerUrl =
-    "wss://7a3320adff1a40c48ced2b8bd06e8c72.s1.eu.hivemq.cloud:8884/mqtt";
+    "wss://fb18f775ad6a416da588f836c40332b4.s2.eu.hivemq.cloud:8884/mqtt";
 
   connect = (
     username: string,
