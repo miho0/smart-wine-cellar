@@ -1,54 +1,118 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Image } from "expo-image";
+import { useEffect, useState } from "react";
+import { StyleSheet } from "react-native";
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
+
+import MQTTService from "@/services/MQTTService";
+import { fetchCurrentWeather } from "@/services/WeatherService";
+
+type EnvironmentData = {
+  temperature: string | null;
+  humidity: string | null;
+  brightness: string | null;
+};
 
 export default function HomeScreen() {
+  const [sensorData, setSensorData] = useState<EnvironmentData>({
+    temperature: null,
+    humidity: null,
+    brightness: null,
+  });
+
+  const [outsideData, setOutsideData] = useState<EnvironmentData>({
+    temperature: null,
+    humidity: null,
+    brightness: null,
+  });
+
+  useEffect(() => {
+    MQTTService.connect(
+      process.env.EXPO_PUBLIC_MQTT_USERNAME!,
+      process.env.EXPO_PUBLIC_MQTT_PASSWORD!,
+      {
+        onTemperature(msg) {
+          setSensorData((prev) => ({ ...prev, temperature: msg }));
+        },
+        onHumidity(msg) {
+          setSensorData((prev) => ({ ...prev, humidity: msg }));
+        },
+        onBrightness(msg) {
+          setSensorData((prev) => ({ ...prev, brightness: msg }));
+        },
+        onError(err) {
+          console.error("MQTT error", err);
+        },
+      }
+    );
+
+    fetchCurrentWeather().then((data) => {
+      if (data) {
+        const { temperature, humidity, brightness } = data;
+        setOutsideData({
+          temperature: temperature.toFixed(1),
+          humidity: humidity.toString(),
+          brightness: brightness.toString(),
+        });
+      }
+    });
+
+    // TODO - odstrani te demo podatke
+    const publishInterval = setInterval(() => {
+      const randomTemp = (15 + Math.random() * 10).toFixed(1); // 15-25°C
+      const randomHumidity = (40 + Math.random() * 30).toFixed(1); // 40-70%
+      const randomBrightness = (50 + Math.random() * 1000).toFixed(0); // 50-1050 lux
+
+      MQTTService.publish("esp32/sensors/temperature", randomTemp);
+      MQTTService.publish("esp32/sensors/humidity", randomHumidity);
+      MQTTService.publish("esp32/sensors/brightness", randomBrightness);
+    }, 3000);
+
+    return () => {
+      clearInterval(publishInterval); // Počisti interval ob unmountu
+      MQTTService.disconnect();
+    };
+  }, []);
+
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
       headerImage={
         <Image
-          source={require('@/assets/images/partial-react-logo.png')}
+          source={require("@/assets/images/index-hero.png")}
           style={styles.reactLogo}
         />
-      }>
+      }
+    >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+        <ThemedText type="title">Smart Wine Cellar</ThemedText>
       </ThemedView>
+
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+        <ThemedText type="subtitle">Live Sensor Data:</ThemedText>
         <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+          🌡 Temperature: {sensorData.temperature ?? "Loading..."}
+        </ThemedText>
+        <ThemedText>
+          💧 Humidity: {sensorData.humidity ?? "Loading..."}
+        </ThemedText>
+        <ThemedText>
+          💡 brightness: {sensorData.brightness ?? "Loading..."}
         </ThemedText>
       </ThemedView>
+
       <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
+        <ThemedText type="subtitle">Live Outside Data:</ThemedText>
         <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+          🌡 Temperature: {outsideData.temperature ?? "Loading..."}
         </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
         <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+          💧 Humidity: {outsideData.humidity ?? "Loading..."}
+        </ThemedText>
+        <ThemedText>
+          💡 Brightness: {outsideData.brightness ?? "N/A"}
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
@@ -57,8 +121,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   stepContainer: {
@@ -66,10 +130,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    height: "100%",
+    width: "100%",
+    position: "absolute",
+    resizeMode: "cover",
   },
 });
