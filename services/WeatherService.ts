@@ -52,8 +52,6 @@ export const fetchCurrentWeather = async (): Promise<WeatherData | null> => {
     const data = await res.json();
 
     const forecast = data?.weather?.[0]?.main;
-    if (!forecast || !data.main)
-      throw new Error("Neveljavni podatki iz API-ja");
 
     return {
       temperature: data.main.temp,
@@ -80,7 +78,7 @@ export const fetchWeatherForecast = async (): Promise<ForecastEntry[]> => {
 
     return data.list.slice(0, 5).map((entry: any) => ({
       time: entry.dt_txt,
-      temp: entry.main.temp,
+      temperature: entry.main.temp,
       humidity: entry.main.humidity,
       brightness: estimateBrightness(entry.weather[0].main),
     }));

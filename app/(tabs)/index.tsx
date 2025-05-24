@@ -1,32 +1,44 @@
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
+import { Alert, Button, FlatList, StyleSheet, View } from "react-native";
 
 import ParallaxScrollView from "@/components/ParallaxScrollView";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 
 import MQTTService from "@/services/MQTTService";
-import { fetchCurrentWeather } from "@/services/WeatherService";
+import {
+  fetchCurrentWeather,
+  fetchWeatherForecast,
+} from "@/services/WeatherService";
 
-type EnvironmentData = {
-  temperature: string | null;
-  humidity: string | null;
-  brightness: string | null;
+type WeatherData = {
+  temperature: number | null;
+  humidity: number | null;
+  brightness: number | null;
+};
+
+type ForecastEntry = {
+  time: string;
+  temperature: number;
+  humidity: number;
+  brightness: number;
 };
 
 export default function HomeScreen() {
-  const [sensorData, setSensorData] = useState<EnvironmentData>({
+  const [sensorData, setSensorData] = useState<WeatherData>({
     temperature: null,
     humidity: null,
     brightness: null,
   });
 
-  const [outsideData, setOutsideData] = useState<EnvironmentData>({
+  const [outsideData, setOutsideData] = useState<WeatherData>({
     temperature: null,
     humidity: null,
     brightness: null,
   });
+
+  const [forecastData, setForecastData] = useState<ForecastEntry[]>([]);
 
   useEffect(() => {
     MQTTService.connect(
@@ -34,13 +46,13 @@ export default function HomeScreen() {
       process.env.EXPO_PUBLIC_MQTT_PASSWORD!,
       {
         onTemperature(msg) {
-          setSensorData((prev) => ({ ...prev, temperature: msg }));
+          setSensorData((prev) => ({ ...prev, temperature: parseFloat(msg) }));
         },
         onHumidity(msg) {
-          setSensorData((prev) => ({ ...prev, humidity: msg }));
+          setSensorData((prev) => ({ ...prev, humidity: parseFloat(msg) }));
         },
         onBrightness(msg) {
-          setSensorData((prev) => ({ ...prev, brightness: msg }));
+          setSensorData((prev) => ({ ...prev, brightness: parseFloat(msg) }));
         },
         onError(err) {
           console.error("MQTT error", err);
@@ -52,9 +64,9 @@ export default function HomeScreen() {
       if (data) {
         const { temperature, humidity, brightness } = data;
         setOutsideData({
-          temperature: temperature.toFixed(1),
-          humidity: humidity.toString(),
-          brightness: brightness.toString(),
+          temperature: temperature,
+          humidity: humidity,
+          brightness: brightness,
         });
       }
     });
@@ -65,9 +77,9 @@ export default function HomeScreen() {
       const randomHumidity = (40 + Math.random() * 30).toFixed(1); // 40-70%
       const randomBrightness = (50 + Math.random() * 1000).toFixed(0); // 50-1050 lux
 
-      MQTTService.publish("esp32/sensors/temperature", randomTemp);
-      MQTTService.publish("esp32/sensors/humidity", randomHumidity);
-      MQTTService.publish("esp32/sensors/brightness", randomBrightness);
+      MQTTService.publish("esp32/temperature", randomTemp);
+      MQTTService.publish("esp32/humidity", randomHumidity);
+      MQTTService.publish("esp32/brightness", randomBrightness);
     }, 3000);
 
     return () => {
@@ -75,6 +87,39 @@ export default function HomeScreen() {
       MQTTService.disconnect();
     };
   }, []);
+
+  const handleFetchCurrent = async () => {
+    const data = await fetchCurrentWeather();
+    if (data) {
+      setOutsideData({
+        temperature: data.temperature,
+        humidity: data.humidity,
+        brightness: data.brightness,
+      });
+    } else {
+      Alert.alert("Error", "Failed to fetch current weather.");
+    }
+  };
+
+  const handleFetchForecast = async () => {
+    const forecast = await fetchWeatherForecast();
+    if (forecast) {
+      setForecastData(forecast);
+    } else {
+      Alert.alert("Error", "Failed to fetch forecast.");
+    }
+  };
+
+  const renderForecastItem = ({ item }: { item: ForecastEntry }) => (
+    <View style={styles.forecastRow}>
+      <ThemedText style={styles.forecastCell}>{item.time}</ThemedText>
+      <ThemedText style={styles.forecastCell}>
+        {item.temperature.toFixed(1)}°C
+      </ThemedText>
+      <ThemedText style={styles.forecastCell}>{item.humidity}%</ThemedText>
+      <ThemedText style={styles.forecastCell}>{item.brightness} lx</ThemedText>
+    </View>
+  );
 
   return (
     <ParallaxScrollView
@@ -90,8 +135,10 @@ export default function HomeScreen() {
         <ThemedText type="title">Smart Wine Cellar</ThemedText>
       </ThemedView>
 
+      {/* LIVE SENSOR DATA */}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Live Sensor Data:</ThemedText>
+
         <ThemedText>
           🌡 Temperature: {sensorData.temperature ?? "Loading..."}
         </ThemedText>
@@ -103,8 +150,10 @@ export default function HomeScreen() {
         </ThemedText>
       </ThemedView>
 
+      {/* OUTSIDE WEATHER DATA */}
       <ThemedView style={styles.stepContainer}>
         <ThemedText type="subtitle">Live Outside Data:</ThemedText>
+        <Button title="Get Current Weather" onPress={handleFetchCurrent} />
         <ThemedText>
           🌡 Temperature: {outsideData.temperature ?? "Loading..."}
         </ThemedText>
@@ -114,6 +163,27 @@ export default function HomeScreen() {
         <ThemedText>
           💡 Brightness: {outsideData.brightness ?? "N/A"}
         </ThemedText>
+      </ThemedView>
+
+      {/* FORECAST TABLE */}
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Forecast Table:</ThemedText>
+        <Button title="Get Forecast" onPress={handleFetchForecast} />
+        {forecastData.length > 0 && (
+          <>
+            <View style={styles.forecastHeader}>
+              <ThemedText style={styles.forecastCell}>Time</ThemedText>
+              <ThemedText style={styles.forecastCell}>Temp</ThemedText>
+              <ThemedText style={styles.forecastCell}>Humidity</ThemedText>
+              <ThemedText style={styles.forecastCell}>Brightness</ThemedText>
+            </View>
+            <FlatList
+              data={forecastData}
+              renderItem={renderForecastItem}
+              keyExtractor={(_, index) => index.toString()}
+            />
+          </>
+        )}
       </ThemedView>
     </ParallaxScrollView>
   );
@@ -134,5 +204,25 @@ const styles = StyleSheet.create({
     width: "100%",
     position: "absolute",
     resizeMode: "cover",
+  },
+  forecastHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#ddd",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  forecastRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+  },
+  forecastCell: {
+    flex: 1,
+    textAlign: "center",
   },
 });

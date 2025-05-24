@@ -5,9 +5,9 @@ class MQTTService {
   private isConnected = false;
 
   private defaultTopics = {
-    temperature: "esp32/sensors/temperature",
-    humidity: "esp32/sensors/humidity",
-    brightness: "esp32/sensors/brightness",
+    temperature: "esp32/temperature",
+    humidity: "esp32/humidity",
+    brightness: "esp32/brightness",
     control: "esp32/control/#",
   };
 
