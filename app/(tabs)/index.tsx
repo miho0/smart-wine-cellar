@@ -72,18 +72,18 @@ export default function HomeScreen() {
     });
 
     // TODO - odstrani te demo podatke
-    const publishInterval = setInterval(() => {
-      const randomTemp = (15 + Math.random() * 10).toFixed(1); // 15-25°C
-      const randomHumidity = (40 + Math.random() * 30).toFixed(1); // 40-70%
-      const randomBrightness = (50 + Math.random() * 1000).toFixed(0); // 50-1050 lux
+    // const publishInterval = setInterval(() => {
+    //   const randomTemp = (15 + Math.random() * 10).toFixed(1); // 15-25°C
+    //   const randomHumidity = (40 + Math.random() * 30).toFixed(1); // 40-70%
+    //   const randomBrightness = (50 + Math.random() * 1000).toFixed(0); // 50-1050 lux
 
-      MQTTService.publish("esp32/temperature", randomTemp);
-      MQTTService.publish("esp32/humidity", randomHumidity);
-      MQTTService.publish("esp32/brightness", randomBrightness);
-    }, 3000);
+    //   MQTTService.publish("esp32/temperature", randomTemp);
+    //   MQTTService.publish("esp32/humidity", randomHumidity);
+    //   MQTTService.publish("esp32/brightness", randomBrightness);
+    // }, 3000);
 
     return () => {
-      clearInterval(publishInterval); // Počisti interval ob unmountu
+      // clearInterval(publishInterval); // Počisti interval ob unmountu
       MQTTService.disconnect();
     };
   }, []);
