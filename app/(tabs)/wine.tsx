@@ -27,6 +27,10 @@ const defaultConditions: WineConditions = {
   temperature: { min: 10, max: 15 },
 };
 
+const MQTT_buzzer = (value: string) => {
+  MQTTService.publish("esp32/settings/useBuzzer", value);
+};
+
 export default function WineScreen() {
   const wineName = defaultConditions.wineName;
   const [minBrightness, setMinBrightness] = useState(
@@ -56,7 +60,7 @@ export default function WineScreen() {
 
   // Publish the optimal conditions to MQTT broker
   // This function will be called when the user saves the conditions
-  const MQTT_publish = () => {
+  const MQTT_publish_conditions = () => {
     MQTTService.publish(
       "esp32/settings/maxBrightness",
       maxBrightness.toString()
@@ -167,7 +171,7 @@ export default function WineScreen() {
           onChangeText={(text) => setMaxTemperature(Number(text))}
         />
 
-        <Button title="Save Conditions" onPress={MQTT_publish} />
+        <Button title="Save Conditions" onPress={MQTT_publish_conditions} />
       </Collapsible>
 
       {/* LIVE SENSOR DATA */}
@@ -184,6 +188,9 @@ export default function WineScreen() {
           💡 brightness: {sensorData.brightness ?? "Loading..."}
         </ThemedText>
       </ThemedView>
+
+      <Button title="Buzzer ON" onPress={() => MQTT_buzzer("ON")} />
+      <Button title="Buzzer OFF" onPress={() => MQTT_buzzer("OFF")} />
     </ParallaxScrollView>
   );
 }
