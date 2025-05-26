@@ -8,7 +8,7 @@ class MQTTService {
     temperature: "esp32/temperature",
     humidity: "esp32/humidity",
     brightness: "esp32/brightness",
-    control: "esp32/control/#",
+    // control: "esp32/settings/#",
   };
 
   private brokerUrl =

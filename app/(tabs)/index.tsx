@@ -128,6 +128,7 @@ export default function HomeScreen() {
         <Image
           source={require("@/assets/images/index-hero.png")}
           style={styles.reactLogo}
+          contentFit="cover"
         />
       }
     >
@@ -203,7 +204,6 @@ const styles = StyleSheet.create({
     height: "100%",
     width: "100%",
     position: "absolute",
-    resizeMode: "cover",
   },
   forecastHeader: {
     flexDirection: "row",
